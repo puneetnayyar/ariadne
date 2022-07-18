@@ -5,6 +5,7 @@ import numpy as np
 import sys
 import time
 import configparser
+from pathlib import Path
 
 from ariadne.core import Ariadne, AriadnePathTip, AriadnePath, ImageSegmentator, AriadnePathFinder, AriadneMultiPathFinder
 import ariadne.predictors_config as predictors_config
@@ -20,7 +21,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--image_file", required=True, help="Target image file.")
 ap.add_argument("--configs_file", default='configs.ini', type=str, help='Configurations file.')
 ap.add_argument("--config_name", default="default", type=str, help='Configuration name')
-ap.add_argument("--debug", default=1, type=int, help='"1" if Debug Mode. "0" Otherwise.')
+ap.add_argument("--debug", default=0, type=int, help='"1" if Debug Mode. "0" Otherwise.')
 args = vars(ap.parse_args())
 
 #######################################
@@ -169,7 +170,7 @@ def clickCallback(data):
                     path_finder.close()
                     # print("PAth", i, "Has Reached MIN SCORE!")
                 if path_finder.path.endsInRegion(clicked_points[1], int(config.get(config_name, 'end_region_radius'))):
-                    # print("PAth", i, "Has Reached Destiantion!")
+                    # print("PAth", i, "Has Reached Destination!")
                     n2 = ariadne.graph.nearestNode(clicked_points[1])
                     path_finder.path.addNode(n2)
                     path_finder.close()
@@ -203,9 +204,28 @@ def clickCallback(data):
 
             output_image = image.copy()  # ariadne.graph.generateBoundaryImage(image)
 
+            scores = multi_path_finder.getScores(single_components=False)
             best = multi_path_finder.getBestPathFinder()
+            for i in np.argsort(scores)[::-1]:
+                if reaches_map[i]:
+                    best = multi_path_finder.getPathFinder(i)
+                    break
+
             best.path.draw(output_image, color=(0, 255, 0), draw_numbers=False)
             window.showImg(output_image, 0)
+
+            filename = Path(args['image_file']).stem
+            output_img_file = f'output/images/{filename}_output.jpg'
+            output_path_file = f'output/paths/{filename}_path.txt'
+
+            cv2.imwrite(output_img_file, output_image)
+            path_points = best.path.as2DPoints()
+
+            with open(output_path_file, 'w') as f:
+                for point in path_points:
+                    print(point, file=f)
+
+
 
 
 window = InteractiveWindow("stereo_matching", autoexit=True)

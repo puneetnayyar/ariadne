@@ -752,6 +752,9 @@ class AriadneMultiPathFinder(object):
         scores = self.getScores()
         index = np.argmax(scores)
         return self.path_finders[index]
+    
+    def getPathFinder(self, index):
+        return self.path_finders[index]
 
 
 class Ariadne(object):
